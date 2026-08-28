@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 from config.settings import RAW_DATA_DIR
+from utils.country_mapping import get_country_iso3
 
 def build_gdp_cartogram_geometries(
     gdf_world: gpd.GeoDataFrame,
@@ -38,9 +39,11 @@ def build_gdp_cartogram_geometries(
         GeoDataFrame with distorted geometries and merged trade indicators.
     """
     # Normalize ISO column names in GeoDataFrame
-    iso_cols = [c for c in ["ISO_A3", "id", "iso_a3", "ISO3", "adm0_a3"] if c in gdf_world.columns]
+    iso_cols = [c for c in ["ISO3166-1-Alpha-3", "ISO_A3", "id", "iso_a3", "ISO3", "adm0_a3", "ADM0_A3", "iso3"] if c in gdf_world.columns]
     if iso_cols:
         gdf_world["ISO3"] = gdf_world[iso_cols[0]]
+    elif "name" in gdf_world.columns:
+        gdf_world["ISO3"] = gdf_world["name"].apply(get_country_iso3)
     else:
         gdf_world["ISO3"] = gdf_world.index.astype(str)
         
