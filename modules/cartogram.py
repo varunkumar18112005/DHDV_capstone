@@ -96,6 +96,7 @@ def build_gdp_cartogram_geometries(
 def create_gdp_cartogram(
     df_country_summary: pd.DataFrame,
     metric_color: str = "Trade Openness (%)",  # "Trade Openness (%)", "Total Trade", "Trade Balance"
+    year: Optional[int] = None,
     title: Optional[str] = None
 ) -> go.Figure:
     """
@@ -104,6 +105,7 @@ def create_gdp_cartogram(
     Args:
         df_country_summary: Country summary with [Country, ISO3, Exports, Imports, Total Trade, Trade Balance, GDP].
         metric_color: Metric to map onto choropleth color scale.
+        year: Snapshot year selected by user.
         title: Custom chart title.
         
     Returns:
@@ -169,14 +171,16 @@ def create_gdp_cartogram(
     else: # Total Trade
         z_values = carto_df["Total Trade"]
         colorscale = "Plasma"
-        zmin, zmax = 0, float(z_values.max())
+        zmin, zmax = 0, max(float(z_values.max()), 1.0)
         colorbar_title = "Total ($B)"
         
+    year_str = f" ({year})" if year else ""
+    
     hover_text = []
     for _, row in carto_df.iterrows():
         tb_sign = "+" if row["Trade Balance"] >= 0 else ""
         ht = (
-            f"<b>{row['Country']} ({row['ISO3']})</b><br>"
+            f"<b>{row['Country']} ({row['ISO3']})</b>{year_str}<br>"
             f"━━━━━━━━━━━━━━━━━━━━━━<br>"
             f"<b>Nominal GDP:</b> ${row['GDP']:,.2f} B<br>"
             f"<b>Area Distortion Factor:</b> {row['scale_factor']:.2f}x<br>"
@@ -210,7 +214,7 @@ def create_gdp_cartogram(
         )
     ))
     
-    chart_title = title or f"<b>GDP-Weighted Non-Contiguous Cartogram</b> (Area ∝ GDP, Color: {metric_color})"
+    chart_title = title or f"<b>GDP-Weighted Non-Contiguous Cartogram{year_str}</b> (Area ∝ GDP, Color: {metric_color})"
     fig.update_layout(
         title=dict(
             text=chart_title,

@@ -11,6 +11,7 @@ from typing import Optional
 def create_choropleth_map(
     df_country_summary: pd.DataFrame,
     metric: str = "Trade Balance",  # "Trade Balance", "Total Trade", "Exports", "Imports"
+    year: Optional[int] = None,
     title: Optional[str] = None
 ) -> go.Figure:
     """
@@ -19,6 +20,7 @@ def create_choropleth_map(
     Args:
         df_country_summary: Country summary DataFrame with [Country, ISO3, Exports, Imports, Total Trade, Trade Balance, GDP].
         metric: Metric to visualize ('Trade Balance', 'Total Trade', 'Exports', 'Imports').
+        year: Snapshot year selected by user.
         title: Custom title for map.
         
     Returns:
@@ -48,23 +50,25 @@ def create_choropleth_map(
         colorbar_title = "Balance ($B)"
     elif metric == "Exports":
         colorscale = "Greens"
-        zmin, zmax = 0, df_map["Exports"].max()
+        zmin, zmax = 0, max(df_map["Exports"].max(), 1.0)
         colorbar_title = "Exports ($B)"
     elif metric == "Imports":
         colorscale = "Blues"
-        zmin, zmax = 0, df_map["Imports"].max()
+        zmin, zmax = 0, max(df_map["Imports"].max(), 1.0)
         colorbar_title = "Imports ($B)"
     else:  # Total Trade
         colorscale = "Plasma"
-        zmin, zmax = 0, df_map["Total Trade"].max()
+        zmin, zmax = 0, max(df_map["Total Trade"].max(), 1.0)
         colorbar_title = "Total ($B)"
         
+    year_str = f" ({year})" if year else ""
+    
     # Build rich hover text
     hover_text = []
     for _, row in df_map.iterrows():
         tb_sign = "+" if row["Trade Balance"] >= 0 else ""
         text = (
-            f"<b>{row['Country']} ({row['ISO3']})</b><br>"
+            f"<b>{row['Country']} ({row['ISO3']})</b>{year_str}<br>"
             f"━━━━━━━━━━━━━━━━━━━━━━<br>"
             f"<b>Exports:</b> ${row['Exports']:,.2f} B<br>"
             f"<b>Imports:</b> ${row['Imports']:,.2f} B<br>"
@@ -97,7 +101,7 @@ def create_choropleth_map(
         )
     ))
     
-    chart_title = title or f"<b>Global Geospatial Trade Distribution</b> — Metric: {metric} ($ Billion USD)"
+    chart_title = title or f"<b>Global Geospatial Trade Distribution{year_str}</b> — Metric: {metric} ($ Billion USD)"
     fig.update_layout(
         title=dict(
             text=chart_title,

@@ -125,11 +125,15 @@ def main():
     # Calculate top-level KPIs for snapshot year
     kpis = calculate_trade_metrics(df_year_filtered)
     
-    # Country summary for snapshot year (for maps)
-    df_country_summary_snap = generate_country_summary(
-        df_cleaned[df_cleaned["year"] == filters["year"]],
-        df_gdp
-    )
+    # Country summary for snapshot year (for geospatial maps)
+    # Filter base cleaned data by snapshot year + active product/flow filters so map updates dynamically per year & product!
+    df_map_base = df_cleaned[df_cleaned["year"] == filters["year"]]
+    if filters["product"] != "All Products":
+        df_map_base = df_map_base[df_map_base["product"] == filters["product"]]
+    if filters["flow"] in ["Export", "Import"]:
+        df_map_base = df_map_base[df_map_base["trade_flow"] == filters["flow"]]
+        
+    df_country_summary_snap = generate_country_summary(df_map_base, df_gdp)
     
     # Yearly summary for trend analysis
     df_yearly_trend = generate_yearly_summary(df_filtered, window_size=filters["ma_window"])
@@ -184,7 +188,7 @@ def main():
     # ====================================================
     with page_tab1:
         st.markdown('<div class="section-heading">🌊 Bilateral Trade Flows & Product Composition</div>', unsafe_allow_html=True)
-        st.caption("Analyze how trade volumes flow between nations and examine the commodity distribution for the selected snapshot year.")
+        st.caption(f"Analyze how trade volumes flow between nations and examine the commodity distribution for snapshot year {filters['year']}.")
         
         col_sankey, col_treemap = st.columns([1.1, 0.9])
         
@@ -226,20 +230,22 @@ def main():
     # PAGE 2: GEOSPATIAL TRADE INTELLIGENCE
     # ====================================================
     with page_tab2:
-        st.markdown('<div class="section-heading">🌍 Global Geospatial Trade Balance & Macroeconomic Map</div>', unsafe_allow_html=True)
-        st.caption("Visualize international trade balances, export volumes, and import dependencies on a natural earth geographic projection.")
+        st.markdown(f'<div class="section-heading">🌍 Global Geospatial Trade Balance & Macroeconomic Map ({filters["year"]})</div>', unsafe_allow_html=True)
+        st.caption(f"Visualize international trade balances, export volumes, and import dependencies on a natural earth geographic projection for snapshot year {filters['year']}.")
         
         fig_choro = create_choropleth_map(
             df_country_summary=df_country_summary_snap,
-            metric=filters["map_metric"]
+            metric=filters["map_metric"],
+            year=filters["year"]
         )
         st.plotly_chart(fig_choro, use_container_width=True)
         
-        st.markdown("""
+        st.markdown(f"""
         <div style="background: rgba(30, 41, 59, 0.6); padding: 14px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); margin-top: 10px;">
-            <strong>📌 Geographical Map Insights:</strong><br>
+            <strong>📌 Geographical Map Insights ({filters['year']}):</strong><br>
+            • <strong>Active Year Filtered Data</strong>: The map dynamically reflects snapshot year <strong>{filters['year']}</strong> across product category <em>{product_display}</em>.<br>
             • <strong>Trade Balance (Surplus/Deficit)</strong>: Green represents net exporting surplus nations, while red highlights net importing deficit economies.<br>
-            • <strong>Interactive Tooltips</strong>: Hovering over any sovereign nation reveals its nominal GDP, total exports, total imports, and net trade balance.
+            • <strong>Interactive Tooltips</strong>: Hovering over any sovereign nation reveals its nominal GDP, total exports, total imports, and net trade balance for {filters['year']}.
         </div>
         """, unsafe_allow_html=True)
 
@@ -247,8 +253,8 @@ def main():
     # PAGE 3: GDP-WEIGHTED CARTOGRAM
     # ====================================================
     with page_tab3:
-        st.markdown('<div class="section-heading">🗺️ Advanced GDP-Weighted Geometric Cartogram</div>', unsafe_allow_html=True)
-        st.caption(r"Country polygon boundaries are distorted and scaled proportionally to national nominal GDP (Area $\propto$ GDP), contrasting economic scale against geographic landmass.")
+        st.markdown(f'<div class="section-heading">🗺️ Advanced GDP-Weighted Geometric Cartogram ({filters["year"]})</div>', unsafe_allow_html=True)
+        st.caption(f"Country polygon boundaries are distorted and scaled proportionally to national nominal GDP (Area ∝ GDP) for year {filters['year']}, contrasting economic scale against geographic landmass.")
         
         carto_color_metric = st.selectbox(
             "Cartogram Color Scale Metric",
@@ -259,15 +265,16 @@ def main():
         
         fig_carto = create_gdp_cartogram(
             df_country_summary=df_country_summary_snap,
-            metric_color=carto_color_metric
+            metric_color=carto_color_metric,
+            year=filters["year"]
         )
         st.plotly_chart(fig_carto, use_container_width=True)
         
-        st.markdown("""
+        st.markdown(f"""
         <div style="background: rgba(30, 41, 59, 0.6); padding: 14px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); margin-top: 10px;">
-            <strong>📐 Mathematical Cartogram Formulation:</strong><br>
-            • <strong>Polygon Scaling</strong>: Each country polygon is transformed via <code>shapely.affinity.scale</code> using scale factor $S_i = \text{clamp}(\sqrt{\text{GDP}_i / \text{Median\_GDP}}, 0.25, 2.80)$.<br>
-            • <strong>Trade Openness Ratio</strong>: Computed as $\text{Trade Openness} = \frac{\text{Total Trade}}{\text{GDP}} \times 100\%$, highlighting nations that punch above their economic weight in international trade.
+            <strong>📐 Mathematical Cartogram Formulation ({filters['year']}):</strong><br>
+            • <strong>Polygon Scaling</strong>: Each country polygon is transformed via <code>shapely.affinity.scale</code> using scale factor $S_i = \text{{clamp}}(\sqrt{{\text{{GDP}}_{{{filters['year']}}} / \text{{Median\_GDP}}}}, 0.25, 2.80)$.<br>
+            • <strong>Trade Openness Ratio</strong>: Computed as $\text{{Trade Openness}} = \\frac{{\text{{Total Trade}}_{{{filters['year']}}}}}{{\text{{GDP}}_{{{filters['year']}}}}} \\times 100\%$, highlighting nations that punch above their economic weight in international trade.
         </div>
         """, unsafe_allow_html=True)
 
@@ -315,7 +322,7 @@ def main():
             )
             st.plotly_chart(fig_trend, use_container_width=True)
             
-        st.info("💡 **Moving Average Formula**: $\\text{MA}_t(n) = \\frac{1}{n} \\sum_{i=0}^{n-1} Y_{t-i}$. The orange line smooths short-term fluctuations to reveal underlying structural growth.")
+        st.info(r"💡 **Moving Average Formula**: $\text{MA}_t(n) = \frac{1}{n} \sum_{i=0}^{n-1} Y_{t-i}$. The orange line smooths short-term fluctuations to reveal underlying structural growth.")
 
     # ====================================================
     # PAGE 5: DATA EXPLORER & EXPORT CENTER
