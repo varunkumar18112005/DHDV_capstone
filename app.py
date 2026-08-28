@@ -126,7 +126,6 @@ def main():
     kpis = calculate_trade_metrics(df_year_filtered)
     
     # Country summary for snapshot year (for geospatial maps)
-    # Filter base cleaned data by snapshot year + active product/flow filters so map updates dynamically per year & product!
     df_map_base = df_cleaned[df_cleaned["year"] == filters["year"]]
     if filters["product"] != "All Products":
         df_map_base = df_map_base[df_map_base["product"] == filters["product"]]
@@ -253,28 +252,47 @@ def main():
     # PAGE 3: GDP-WEIGHTED CARTOGRAM
     # ====================================================
     with page_tab3:
-        st.markdown(f'<div class="section-heading">🗺️ Advanced GDP-Weighted Geometric Cartogram ({filters["year"]})</div>', unsafe_allow_html=True)
-        st.caption(f"Country polygon boundaries are distorted and scaled proportionally to national nominal GDP (Area ∝ GDP) for year {filters['year']}, contrasting economic scale against geographic landmass.")
+        st.markdown(f'<div class="section-heading">🗺️ Advanced GDP-Weighted Cartogram Analysis ({filters["year"]})</div>', unsafe_allow_html=True)
+        st.caption(f"A cartogram distorts geographic maps so that country sizes reflect Economic Weight (Nominal GDP) rather than land area for year {filters['year']}.")
         
-        carto_color_metric = st.selectbox(
-            "Cartogram Color Scale Metric",
-            options=["Trade Openness (%)", "Total Trade", "Trade Balance"],
-            index=0,
-            key="sb_carto_metric"
-        )
-        
+        c1, c2 = st.columns([0.5, 0.5])
+        with c1:
+            carto_style = st.radio(
+                "Cartogram Style",
+                options=["Dorling Bubble Cartogram (Recommended)", "Geometric Polygon Scaling"],
+                index=0,
+                horizontal=True,
+                key="rb_carto_style"
+            )
+        with c2:
+            carto_color_metric = st.selectbox(
+                "Cartogram Color Scale Metric",
+                options=["Trade Openness (%)", "Total Trade", "Trade Balance"],
+                index=0,
+                key="sb_carto_metric"
+            )
+            
         fig_carto = create_gdp_cartogram(
             df_country_summary=df_country_summary_snap,
             metric_color=carto_color_metric,
-            year=filters["year"]
+            year=filters["year"],
+            carto_style=carto_style
         )
         st.plotly_chart(fig_carto, use_container_width=True)
         
         st.markdown(f"""
-        <div style="background: rgba(30, 41, 59, 0.6); padding: 14px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); margin-top: 10px;">
-            <strong>📐 Mathematical Cartogram Formulation ({filters['year']}):</strong><br>
-            • <strong>Polygon Scaling</strong>: Each country polygon is transformed via <code>shapely.affinity.scale</code> using scale factor $S_i = \text{{clamp}}(\sqrt{{\text{{GDP}}_{{{filters['year']}}} / \text{{Median\_GDP}}}}, 0.25, 2.80)$.<br>
-            • <strong>Trade Openness Ratio</strong>: Computed as $\text{{Trade Openness}} = \\frac{{\text{{Total Trade}}_{{{filters['year']}}}}}{{\text{{GDP}}_{{{filters['year']}}}}} \\times 100\%$, highlighting nations that punch above their economic weight in international trade.
+        <div style="background: rgba(30, 41, 59, 0.6); padding: 16px 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); margin-top: 10px;">
+            <h4 style="margin-top:0; color: #38BDF8;">💡 How to Read & Understand the Cartogram:</h4>
+            <ul>
+                <li><strong>What is a Cartogram?</strong> On standard world maps, Russia and Canada look massive due to land area, even though their economies are smaller than Japan or Germany. A cartogram fixes this by scaling country sizes according to <strong>Nominal GDP ($B)</strong>.</li>
+                <li><strong>Dorling Bubble Cartogram (Recommended Mode)</strong>:
+                    <ul>
+                        <li><strong>Circle Size</strong>: Scaled directly by <code>sqrt(Nominal GDP)</code>. Large circles = Economic Giants (USA, China, Germany, Japan, India). Small circles = Smaller economies.</li>
+                        <li><strong>Circle Color</strong>: Displays <strong>Trade Balance</strong> (Green = Surplus, Red = Deficit) or <strong>Trade Openness</strong> (Trade/GDP %).</li>
+                    </ul>
+                </li>
+                <li><strong>Geometric Polygon Scaling Mode</strong>: Distorts country landmass polygons outwards from their geographic centroid based on scale factor $S_i = \text{{clamp}}(\sqrt{{\text{{GDP}}_i / \text{{Median\_GDP}}}}, 0.30, 2.50)$.</li>
+            </ul>
         </div>
         """, unsafe_allow_html=True)
 
@@ -322,7 +340,7 @@ def main():
             )
             st.plotly_chart(fig_trend, use_container_width=True)
             
-        st.info(r"💡 **Moving Average Formula**: $\text{MA}_t(n) = \frac{1}{n} \sum_{i=0}^{n-1} Y_{t-i}$. The orange line smooths short-term fluctuations to reveal underlying structural growth.")
+        st.info("💡 **Moving Average Formula**: MA_t(n) = (1 / n) * sum(Y_{t-i}). The orange line smooths short-term fluctuations to reveal underlying structural growth.")
 
     # ====================================================
     # PAGE 5: DATA EXPLORER & EXPORT CENTER
