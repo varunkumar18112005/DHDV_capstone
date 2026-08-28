@@ -46,7 +46,7 @@ def test_empty_dataset_calculations():
     assert metrics["trade_balance"] == 0.0
     assert metrics["yoy_growth"] == 0.0
     
-    country_sum = generate_country_summary(df_empty)
+    country_sum = generate_country_summary(df_empty, include_all_countries=False)
     assert country_sum.empty
     
     prod_sum = generate_product_summary(df_empty)

@@ -57,7 +57,31 @@ COUNTRY_MAP: Dict[str, Dict[str, str]] = {
     "Bangladesh": {"iso3": "BGD", "iso2": "BD", "un_code": "050", "region": "Asia"},
     "Ireland": {"iso3": "IRL", "iso2": "IE", "un_code": "372", "region": "Europe"},
     "Denmark": {"iso3": "DNK", "iso2": "DK", "un_code": "208", "region": "Europe"},
-    "Austria": {"iso3": "AUT", "iso2": "AT", "un_code": "040", "region": "Europe"}
+    "Austria": {"iso3": "AUT", "iso2": "AT", "un_code": "040", "region": "Europe"},
+    "Peru": {"iso3": "PER", "iso2": "PE", "un_code": "604", "region": "South America"},
+    "Kenya": {"iso3": "KEN", "iso2": "KE", "un_code": "404", "region": "Africa"},
+    "Morocco": {"iso3": "MAR", "iso2": "MA", "un_code": "504", "region": "Africa"},
+    "Algeria": {"iso3": "DZA", "iso2": "DZ", "un_code": "012", "region": "Africa"},
+    "Ghana": {"iso3": "GHA", "iso2": "GH", "un_code": "288", "region": "Africa"},
+    "Ethiopia": {"iso3": "ETH", "iso2": "ET", "un_code": "231", "region": "Africa"},
+    "Tanzania": {"iso3": "TZA", "iso2": "TZ", "un_code": "834", "region": "Africa"},
+    "Angola": {"iso3": "AGO", "iso2": "AO", "un_code": "024", "region": "Africa"},
+    "Kazakhstan": {"iso3": "KAZ", "iso2": "KZ", "un_code": "398", "region": "Asia"},
+    "Uzbekistan": {"iso3": "UZB", "iso2": "UZ", "un_code": "860", "region": "Asia"},
+    "Qatar": {"iso3": "QAT", "iso2": "QA", "un_code": "634", "region": "Middle East"},
+    "Kuwait": {"iso3": "KWT", "iso2": "KW", "un_code": "414", "region": "Middle East"},
+    "Oman": {"iso3": "OMN", "iso2": "OM", "un_code": "512", "region": "Middle East"},
+    "Iraq": {"iso3": "IRQ", "iso2": "IQ", "un_code": "368", "region": "Middle East"},
+    "Greece": {"iso3": "GRC", "iso2": "GR", "un_code": "300", "region": "Europe"},
+    "Portugal": {"iso3": "PRT", "iso2": "PT", "un_code": "620", "region": "Europe"},
+    "Finland": {"iso3": "FIN", "iso2": "FI", "un_code": "246", "region": "Europe"},
+    "Romania": {"iso3": "ROU", "iso2": "RO", "un_code": "642", "region": "Europe"},
+    "Czech Republic": {"iso3": "CZE", "iso2": "CZ", "un_code": "203", "region": "Europe"},
+    "Hungary": {"iso3": "HUN", "iso2": "HU", "un_code": "348", "region": "Europe"},
+    "Ukraine": {"iso3": "UKR", "iso2": "UA", "un_code": "804", "region": "Europe"},
+    "New Zealand": {"iso3": "NZL", "iso2": "NZ", "un_code": "554", "region": "Oceania"},
+    "Ecuador": {"iso3": "ECU", "iso2": "EC", "un_code": "218", "region": "South America"},
+    "Venezuela": {"iso3": "VEN", "iso2": "VE", "un_code": "862", "region": "South America"}
 }
 
 # Reverse mapping for ISO3 -> Standard Name
@@ -103,19 +127,34 @@ ISO3_TO_NAME: Dict[str, str] = {
     "BGD": "Bangladesh",
     "IRL": "Ireland",
     "DNK": "Denmark",
-    "AUT": "Austria"
+    "AUT": "Austria",
+    "PER": "Peru",
+    "KEN": "Kenya",
+    "MAR": "Morocco",
+    "DZA": "Algeria",
+    "GHA": "Ghana",
+    "ETH": "Ethiopia",
+    "TZA": "Tanzania",
+    "AGO": "Angola",
+    "KAZ": "Kazakhstan",
+    "UZB": "Uzbekistan",
+    "QAT": "Qatar",
+    "KWT": "Kuwait",
+    "OMN": "Oman",
+    "IRQ": "Iraq",
+    "GRC": "Greece",
+    "PRT": "Portugal",
+    "FIN": "Finland",
+    "ROU": "Romania",
+    "CZE": "Czech Republic",
+    "HUN": "Hungary",
+    "UKR": "Ukraine",
+    "NZL": "New Zealand",
+    "ECU": "Ecuador",
+    "VEN": "Venezuela"
 }
 
 def get_country_iso3(country_name: str) -> Optional[str]:
-    """
-    Get ISO3 code from country name.
-    
-    Args:
-        country_name: Name of the country.
-        
-    Returns:
-        3-letter ISO code or None if not found.
-    """
     if not country_name:
         return None
     name_clean = country_name.strip()
@@ -123,29 +162,17 @@ def get_country_iso3(country_name: str) -> Optional[str]:
         return name_clean.upper()
     if name_clean in COUNTRY_MAP:
         return COUNTRY_MAP[name_clean]["iso3"]
-    # Case-insensitive search
     for name, info in COUNTRY_MAP.items():
         if name.lower() == name_clean.lower():
             return info["iso3"]
     return None
 
 def standardize_country_name(name_or_code: str) -> str:
-    """
-    Standardize any country name or ISO code to official standard display name.
-    
-    Args:
-        name_or_code: Country name, ISO2, or ISO3 code.
-        
-    Returns:
-        Standardized display name.
-    """
     if not name_or_code:
         return "Unknown"
     clean = str(name_or_code).strip()
-    # Check if direct ISO3
     if clean.upper() in ISO3_TO_NAME:
         return ISO3_TO_NAME[clean.upper()]
-    # Check in country map
     if clean in COUNTRY_MAP:
         iso3 = COUNTRY_MAP[clean]["iso3"]
         return ISO3_TO_NAME.get(iso3, clean)
@@ -155,9 +182,6 @@ def standardize_country_name(name_or_code: str) -> str:
     return clean
 
 def get_un_code(country_name: str) -> Optional[str]:
-    """
-    Get UN Comtrade numeric country code.
-    """
     if country_name in COUNTRY_MAP:
         return COUNTRY_MAP[country_name]["un_code"]
     iso3 = get_country_iso3(country_name)

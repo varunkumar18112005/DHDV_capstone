@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any, Tuple
 from pathlib import Path
 
 from config.settings import PROCESSED_DATA_DIR, RAW_DATA_DIR
+from utils.country_mapping import ISO3_TO_NAME
 
 def calculate_trade_metrics(df: pd.DataFrame) -> Dict[str, float]:
     """
@@ -54,34 +55,54 @@ def calculate_trade_metrics(df: pd.DataFrame) -> Dict[str, float]:
         "yoy_growth": round(yoy_growth, 2)
     }
 
-def generate_country_summary(df_trade: pd.DataFrame, df_gdp: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+def generate_country_summary(
+    df_trade: pd.DataFrame,
+    df_gdp: Optional[pd.DataFrame] = None,
+    include_all_countries: bool = True
+) -> pd.DataFrame:
     """
     Generate Country Summary table with Exports, Imports, Total Trade, Trade Balance, and GDP.
+    Ensures all recognized global countries are represented for complete geospatial mapping.
     """
-    if df_trade is None or df_trade.empty:
+    if not include_all_countries and (df_trade is None or df_trade.empty):
         return pd.DataFrame(columns=["Country", "ISO3", "Exports", "Imports", "Total Trade", "Trade Balance", "GDP"])
         
-    # Group by reporter
-    grouped = df_trade.groupby(["reporter", "reporter_iso", "trade_flow"])["trade_value"].sum().unstack(fill_value=0.0).reset_index()
+    all_countries_df = pd.DataFrame([
+        {"Country": name, "ISO3": iso3} for iso3, name in ISO3_TO_NAME.items()
+    ])
     
-    if "Export" not in grouped.columns:
-        grouped["Export"] = 0.0
-    if "Import" not in grouped.columns:
-        grouped["Import"] = 0.0
+    if df_trade is None or df_trade.empty:
+        grouped = all_countries_df.copy()
+        grouped["Exports"] = 0.0
+        grouped["Imports"] = 0.0
+        grouped["Total Trade"] = 0.0
+        grouped["Trade Balance"] = 0.0
+    else:
+        # Group by reporter
+        trade_grouped = df_trade.groupby(["reporter_iso", "trade_flow"])["trade_value"].sum().unstack(fill_value=0.0).reset_index()
         
-    grouped["Total Trade"] = grouped["Export"] + grouped["Import"]
-    grouped["Trade Balance"] = grouped["Export"] - grouped["Import"]
-    
-    grouped = grouped.rename(columns={
-        "reporter": "Country",
-        "reporter_iso": "ISO3",
-        "Export": "Exports",
-        "Import": "Imports"
-    })
-    
+        if "Export" not in trade_grouped.columns:
+            trade_grouped["Export"] = 0.0
+        if "Import" not in trade_grouped.columns:
+            trade_grouped["Import"] = 0.0
+            
+        trade_grouped["Total Trade"] = trade_grouped["Export"] + trade_grouped["Import"]
+        trade_grouped["Trade Balance"] = trade_grouped["Export"] - trade_grouped["Import"]
+        
+        trade_grouped = trade_grouped.rename(columns={
+            "reporter_iso": "ISO3",
+            "Export": "Exports",
+            "Import": "Imports"
+        })
+        
+        if include_all_countries:
+            grouped = all_countries_df.merge(trade_grouped, on="ISO3", how="left").fillna(0.0)
+        else:
+            grouped = trade_grouped
+            
     # Merge GDP if provided
     if df_gdp is not None and not df_gdp.empty:
-        latest_year = df_trade["year"].max() if "year" in df_trade.columns else 2023
+        latest_year = df_trade["year"].max() if (df_trade is not None and not df_trade.empty and "year" in df_trade.columns) else 2023
         gdp_subset = df_gdp[df_gdp["year"] == latest_year][["iso_code", "gdp"]].drop_duplicates(subset=["iso_code"])
         grouped = grouped.merge(gdp_subset, left_on="ISO3", right_on="iso_code", how="left")
         grouped["GDP"] = grouped["gdp"].fillna(0.0)
